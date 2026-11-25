@@ -137,6 +137,12 @@ def _authorizer(action: int, arg1: str | None, arg2: str | None, _db: str | None
         if name in PRAGMAS_NO_ARG and arg2 is None:
             return sqlite3.SQLITE_OK
         return sqlite3.SQLITE_DENY
+    if action == sqlite3.SQLITE_UPDATE and (arg1 or "").lower() in ("sqlite_master", "sqlite_schema"):
+        # Older SQLite builds (e.g. the one bundled with Python 3.10 on Windows) report a
+        # schema "update" while preparing table-valued pragmas such as pragma_table_info().
+        # Nothing is written: the connection is mode=ro and PRAGMA query_only=ON, and
+        # changing sqlite_master would also need writable_schema, which is never allowed.
+        return sqlite3.SQLITE_OK
     # INSERT, UPDATE, DELETE, CREATE_*, DROP_*, ALTER_TABLE, ATTACH, DETACH,
     # TRANSACTION, SAVEPOINT, ANALYZE, REINDEX, ... are all refused.
     return sqlite3.SQLITE_DENY
